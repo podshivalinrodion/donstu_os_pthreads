@@ -23,18 +23,20 @@ int main(void) {
         return EXIT_FAILURE;
     }
 
-    printf("main: pid = %d, opened file: \'output.log\' (fd = %d)\n", getThreadID(), g_fd);
+    char main_buf[128];
+    snprintf(main_buf, sizeof(main_buf),
+             "main: pid = %d, opened file: 'output.log' (fd = %d)\n",
+             getThreadID(), g_fd);
+    write_line(main_buf);
 
     // create structs for threads
-    args[0].id  = 1;
-    strcpy(args[0].tag, "First\0");
-    args[1].id  = 2;
-    strcpy(args[1].tag, "Second\0");
-    args[2].id  = 3;
-    strcpy(args[2].tag, "Third\0");
-    args[3].id  = 4;
-    strcpy(args[3].tag, "Fourth\0");
-    
+    for (int i = 0; i < COUNT_THREADS; i++) {
+        args[i].id = i + 1;
+        snprintf(args[i].tag, sizeof(args[i].tag), "T%d", i);
+        snprintf(args[i].message, sizeof(args[i].message),
+                 "Hello from main to thread %s\n", args[i].tag);
+    }
+
     // create threads
     for (int i = 0; i < COUNT_THREADS; i++) {
         int rc = pthread_create(&threads[i], NULL, func_thread, &args[i]);
@@ -46,16 +48,39 @@ int main(void) {
 
     // wait stoping all thread
     for (int i = 0; i < COUNT_THREADS; i++) {
-        pthread_join(threads[i], NULL);
+        void *ret = NULL;
+        int rc = pthread_join(threads[i], &ret);
+        if (rc != 0) {
+            printf("pthread_join for thread %d: rc = %d (%s)\n",
+                   i, rc, strerror(rc));
+        } else if (ret != NULL) {
+            printf("main got: %s", (char *)ret);
+            free(ret);
+        }
     }
 
     // sys call for close file
-    if (close(g_fd) < 0) {
-        perror("close");
-        return EXIT_FAILURE;
+    // задание 33: сравнение pthread_t через pthread_equal
+    printf("\n--- pthread_equal demo ---\n");
+
+    // сравниваем два разных потока
+    if (pthread_equal(threads[0], threads[1])) {
+        printf("threads[0] == threads[1]\n");
+    } else {
+        printf("threads[0] != threads[1]  (разные потоки)\n");
     }
-    // remove mutex
-    pthread_mutex_destroy(&g_lock);
-    printf("main: all threads finished, file closed\n");
-    return EXIT_SUCCESS;
+
+    // сравниваем поток с самим собой
+    if (pthread_equal(threads[0], threads[0])) {
+        printf("threads[0] == threads[0]  (тот же поток)\n");
+    } else {
+        printf("threads[0] != threads[0]\n");
+    }
+
+    // сравниваем pthread_self() (главный поток) с threads[0]
+    if (pthread_equal(pthread_self(), threads[0])) {
+        printf("main == threads[0]\n");
+    } else {
+        printf("main != threads[0]  (главный поток ≠ рабочий)\n");
+    }
 }

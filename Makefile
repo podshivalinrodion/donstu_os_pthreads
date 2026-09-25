@@ -1,13 +1,16 @@
 # Current compiler for work
-CC		= gcc
+CC		= clang
 # Flags for compiling
 # all warnings, additional warnings and 
 # debug information
-CFLAGS  = -Wall -Wextra -g
+CFLAGS  = -Wall -Wextra -g -pthread
 # Name of execution file (result of compilation)
 TARGET 	= app
 # list of object files for linking (result of compiling too)
 OBJS	= main.o pthreadfuncs.o
+
+# log file
+OUTPUT  = output.log
 
 # Rule for making
 # target: dependencies
@@ -31,8 +34,19 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # it's only actions
+# it's only actions
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) $(OUTPUT)
 
+run: $(TARGET)
+	./$(TARGET)
+
+log:
+	cat output.log
+pc: producer_consumer.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+rb: ring_buffer.c
+	$(CC) $(CFLAGS) -o $@ $<
 # lay target
-.PHONY: clean
+.PHONY: clean run log pc rb
